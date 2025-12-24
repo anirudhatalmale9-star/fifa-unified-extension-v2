@@ -195,6 +195,31 @@
       }
     }
 
+    // Check age confirmation checkbox
+    const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+    for (const cb of checkboxes) {
+      // Get nearby text
+      let labelText = '';
+      const label = document.querySelector(`label[for="${cb.id}"]`);
+      if (label) labelText = label.textContent.toLowerCase();
+
+      let parent = cb.parentElement;
+      for (let i = 0; i < 3 && parent; i++) {
+        labelText += ' ' + (parent.textContent || '').toLowerCase();
+        parent = parent.parentElement;
+      }
+
+      // Check for age confirmation checkbox
+      if (labelText.includes('18') || labelText.includes('confirm') || labelText.includes('years old')) {
+        if (!cb.checked) {
+          cb.click();
+          cb.dispatchEvent(new Event('change', { bubbles: true }));
+          filled++;
+          console.log('[FIFA] Checked age confirmation checkbox');
+        }
+      }
+    }
+
     // Handle select dropdowns
     const selects = document.querySelectorAll('select');
     for (const sel of selects) {
@@ -268,6 +293,22 @@
             sel.value = opt.value;
             sel.dispatchEvent(new Event('change', { bubbles: true }));
             filled++;
+            break;
+          }
+        }
+        continue;
+      }
+
+      // "I am a Fan of" dropdown - select USA or country from account
+      if (labelText.includes('fan of') || labelText.includes('interest') || selName.includes('fan') || selId.includes('fan')) {
+        const fanCountry = account.fan_of || account.country || 'USA';
+        for (const opt of opts) {
+          if (opt.value.toLowerCase().includes(fanCountry.toLowerCase()) ||
+              opt.textContent.toLowerCase().includes(fanCountry.toLowerCase())) {
+            sel.value = opt.value;
+            sel.dispatchEvent(new Event('change', { bubbles: true }));
+            filled++;
+            console.log('[FIFA] Selected "I am a Fan of":', opt.textContent);
             break;
           }
         }

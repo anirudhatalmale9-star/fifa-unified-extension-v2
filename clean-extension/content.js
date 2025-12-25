@@ -21,21 +21,6 @@
     { matchNumber: 47, category: 1, quantity: 4 },
   ];
   const ACTION_DELAY = 50;
-
-  // US State abbreviations to full names
-  const US_STATES = {
-    'AL': 'Alabama', 'AK': 'Alaska', 'AZ': 'Arizona', 'AR': 'Arkansas', 'CA': 'California',
-    'CO': 'Colorado', 'CT': 'Connecticut', 'DE': 'Delaware', 'FL': 'Florida', 'GA': 'Georgia',
-    'HI': 'Hawaii', 'ID': 'Idaho', 'IL': 'Illinois', 'IN': 'Indiana', 'IA': 'Iowa',
-    'KS': 'Kansas', 'KY': 'Kentucky', 'LA': 'Louisiana', 'ME': 'Maine', 'MD': 'Maryland',
-    'MA': 'Massachusetts', 'MI': 'Michigan', 'MN': 'Minnesota', 'MS': 'Mississippi', 'MO': 'Missouri',
-    'MT': 'Montana', 'NE': 'Nebraska', 'NV': 'Nevada', 'NH': 'New Hampshire', 'NJ': 'New Jersey',
-    'NM': 'New Mexico', 'NY': 'New York', 'NC': 'North Carolina', 'ND': 'North Dakota', 'OH': 'Ohio',
-    'OK': 'Oklahoma', 'OR': 'Oregon', 'PA': 'Pennsylvania', 'RI': 'Rhode Island', 'SC': 'South Carolina',
-    'SD': 'South Dakota', 'TN': 'Tennessee', 'TX': 'Texas', 'UT': 'Utah', 'VT': 'Vermont',
-    'VA': 'Virginia', 'WA': 'Washington', 'WV': 'West Virginia', 'WI': 'Wisconsin', 'WY': 'Wyoming',
-    'DC': 'District of Columbia'
-  };
   // ========== END CONFIG ==========
 
   // Parse matches string from CSV to config array
@@ -178,8 +163,8 @@
         if (setValue(input, account.password)) filled++;
         continue;
       }
-      // Phone / Mobile
-      if ((tp === 'tel' || nm.includes('phone') || nm.includes('mobile') || nm.includes('cell') || id.includes('phone') || id.includes('mobile') || ph.includes('phone') || ph.includes('mobile') || context.includes('phone') || context.includes('mobile')) && account.phone) {
+      // Phone
+      if ((tp === 'tel' || nm.includes('phone')) && account.phone) {
         if (setValue(input, account.phone)) filled++;
         continue;
       }
@@ -208,11 +193,6 @@
         if (setValue(input, account.zip_code)) filled++;
         continue;
       }
-      // Province / State (as input field)
-      if ((nm.includes('province') || nm.includes('state') || nm.includes('region') || id.includes('province') || id.includes('state') || ph.includes('province') || ph.includes('state') || context.includes('province') || context.includes('state')) && account.province) {
-        if (setValue(input, account.province)) filled++;
-        continue;
-      }
     }
 
     // Check age confirmation checkbox
@@ -238,155 +218,15 @@
           console.log('[FIFA] Checked age confirmation checkbox');
         }
       }
-
-      // Check for Terms/Legal/I Accept checkbox
-      if (labelText.includes('accept') || labelText.includes('terms') || labelText.includes('legal') || labelText.includes('agree') || labelText.includes('privacy')) {
-        if (!cb.checked) {
-          cb.click();
-          cb.dispatchEvent(new Event('change', { bubbles: true }));
-          filled++;
-          console.log('[FIFA] Checked terms/accept checkbox');
-        }
-      }
     }
 
     // Handle select dropdowns
     const selects = document.querySelectorAll('select');
-    console.log('[FIFA] Found', selects.length, 'select dropdowns');
-
     for (const sel of selects) {
       const opts = Array.from(sel.options);
       const optTexts = opts.map(o => o.textContent.toLowerCase());
       const selId = (sel.id || '').toLowerCase();
       const selName = (sel.name || '').toLowerCase();
-
-      console.log('[FIFA] Processing select:', selName || selId, 'with', opts.length, 'options:', optTexts.slice(0, 5));
-
-      // Direct FIFA dropdown targeting by ID/name
-      // Country dropdown (FIFA uses id="country")
-      if (selId === 'country' || selName === 'country') {
-        const countryValue = (account.country || 'USA').toLowerCase();
-        console.log('[FIFA] Found country dropdown directly, looking for:', countryValue, 'Options:', opts.map(o => `${o.value}="${o.textContent}"`).slice(0, 10));
-        for (const opt of opts) {
-          const optValue = (opt.value || '').toLowerCase();
-          const optText = (opt.textContent || '').toLowerCase().trim();
-          // Match USA, United States, US, etc.
-          if (optValue === countryValue || optText === countryValue ||
-              optValue.includes(countryValue) || optText.includes(countryValue) ||
-              (countryValue === 'usa' && (optText.includes('united states') || optValue.includes('united states') || optValue === 'us')) ||
-              (countryValue === 'us' && (optText.includes('united states') || optValue.includes('united states') || optValue === 'usa'))) {
-            sel.value = opt.value;
-            sel.dispatchEvent(new Event('change', { bubbles: true }));
-            sel.dispatchEvent(new Event('input', { bubbles: true }));
-            filled++;
-            console.log('[FIFA] Selected country:', opt.textContent, 'value:', opt.value);
-            break;
-          }
-        }
-        continue;
-      }
-
-      // Gender dropdown (FIFA uses id="gender" or name="gender")
-      if (selId === 'gender' || selName === 'gender') {
-        const genderValue = (account.gender || 'male').toLowerCase();
-        console.log('[FIFA] Found gender dropdown directly, looking for:', genderValue, 'Options:', opts.map(o => `${o.value}="${o.textContent}"`));
-        for (const opt of opts) {
-          const optValue = (opt.value || '').toLowerCase();
-          const optText = (opt.textContent || '').toLowerCase().trim();
-          // Match by value or text content - skip empty/placeholder options
-          if (opt.value && opt.value !== '' && (
-              optValue === genderValue || optText === genderValue ||
-              optValue.includes(genderValue) || optText.includes(genderValue) ||
-              (genderValue === 'male' && (optValue === 'm' || optText === 'male')) ||
-              (genderValue === 'female' && (optValue === 'f' || optText === 'female')))) {
-            sel.value = opt.value;
-            sel.dispatchEvent(new Event('change', { bubbles: true }));
-            sel.dispatchEvent(new Event('input', { bubbles: true }));
-            filled++;
-            console.log('[FIFA] Selected gender:', opt.textContent, 'value:', opt.value);
-            break;
-          }
-        }
-        continue;
-      }
-
-      // Language dropdown (FIFA uses id="preferredLanguage" or similar)
-      if (selId === 'preferredlanguage' || selName === 'preferredlanguage' ||
-          selId.includes('language') || selName.includes('language') ||
-          selId === 'preferredcommunicationlanguage' || selName === 'preferredcommunicationlanguage') {
-        const langValue = (account.language || 'english').toLowerCase();
-        console.log('[FIFA] Found language dropdown directly, looking for:', langValue, 'Options:', opts.map(o => `${o.value}="${o.textContent}"`));
-        for (const opt of opts) {
-          const optValue = (opt.value || '').toLowerCase();
-          const optText = (opt.textContent || '').toLowerCase().trim();
-          // Match by value or text content - skip empty/placeholder options
-          if (opt.value && opt.value !== '' && (
-              optValue === langValue || optText === langValue ||
-              optValue.includes(langValue) || optText.includes(langValue))) {
-            sel.value = opt.value;
-            sel.dispatchEvent(new Event('change', { bubbles: true }));
-            sel.dispatchEvent(new Event('input', { bubbles: true }));
-            filled++;
-            console.log('[FIFA] Selected language:', opt.textContent, 'value:', opt.value);
-            break;
-          }
-        }
-        continue;
-      }
-
-      // Province/State dropdown - direct targeting
-      if (selId.includes('state') || selId.includes('province') || selId.includes('region') ||
-          selName.includes('state') || selName.includes('province') || selName.includes('region') ||
-          selId === 'addressstate' || selName === 'addressstate') {
-        if (account.province) {
-          const provinceValue = account.province.toUpperCase().trim();
-          const fullStateName = US_STATES[provinceValue] || account.province;
-          console.log('[FIFA] Found state/province dropdown directly:', selName || selId, 'Looking for:', provinceValue, '->', fullStateName);
-          console.log('[FIFA] Options:', opts.map(o => `${o.value}="${o.textContent}"`).slice(0, 10));
-
-          for (const opt of opts) {
-            const optValue = (opt.value || '').toLowerCase();
-            const optText = (opt.textContent || '').toLowerCase().trim();
-
-            // Try multiple matching strategies
-            if (optValue === provinceValue.toLowerCase() ||
-                optText === provinceValue.toLowerCase() ||
-                optValue === fullStateName.toLowerCase() ||
-                optText === fullStateName.toLowerCase() ||
-                optText.includes(fullStateName.toLowerCase()) ||
-                optValue.includes(fullStateName.toLowerCase())) {
-              sel.value = opt.value;
-              sel.dispatchEvent(new Event('change', { bubbles: true }));
-              sel.dispatchEvent(new Event('input', { bubbles: true }));
-              filled++;
-              console.log('[FIFA] Selected state/province:', opt.textContent, 'value:', opt.value);
-              break;
-            }
-          }
-        }
-        continue;
-      }
-
-      // Check if this dropdown has US states (by looking at option texts)
-      const hasUSStates = optTexts.some(t => t === 'california' || t === 'texas' || t === 'new york' || t === 'florida');
-      if (hasUSStates && account.province) {
-        const provinceValue = account.province.toUpperCase().trim();
-        const fullStateName = US_STATES[provinceValue] || account.province;
-        console.log('[FIFA] Detected US states dropdown:', selName || selId, 'Looking for:', fullStateName);
-
-        for (const opt of opts) {
-          const optText = (opt.textContent || '').toLowerCase().trim();
-          if (optText === fullStateName.toLowerCase()) {
-            sel.value = opt.value;
-            sel.dispatchEvent(new Event('change', { bubbles: true }));
-            sel.dispatchEvent(new Event('input', { bubbles: true }));
-            filled++;
-            console.log('[FIFA] Selected state from US states dropdown:', opt.textContent, 'value:', opt.value);
-            break;
-          }
-        }
-        continue;
-      }
 
       let labelText = '';
       let parent = sel.parentElement;
@@ -447,23 +287,12 @@
 
       // State/Province dropdown
       if ((selId.includes('state') || selId.includes('province') || selName.includes('state') || selName.includes('province') || labelText.includes('state') || labelText.includes('province')) && account.province) {
-        const provinceValue = account.province.toUpperCase().trim();
-        const fullStateName = US_STATES[provinceValue] || account.province;
-
         for (const opt of opts) {
-          const optVal = opt.value.toLowerCase();
-          const optText = opt.textContent.toLowerCase();
-          // Try matching abbreviation (CA), full name (California), or partial match
-          if (optVal === provinceValue.toLowerCase() ||
-              optText === provinceValue.toLowerCase() ||
-              optVal.includes(fullStateName.toLowerCase()) ||
-              optText.includes(fullStateName.toLowerCase()) ||
-              optVal === fullStateName.toLowerCase() ||
-              optText === fullStateName.toLowerCase()) {
+          if (opt.value.toLowerCase().includes(account.province.toLowerCase()) ||
+              opt.textContent.toLowerCase().includes(account.province.toLowerCase())) {
             sel.value = opt.value;
             sel.dispatchEvent(new Event('change', { bubbles: true }));
             filled++;
-            console.log('[FIFA] Selected state/province:', opt.textContent);
             break;
           }
         }
@@ -480,42 +309,6 @@
             sel.dispatchEvent(new Event('change', { bubbles: true }));
             filled++;
             console.log('[FIFA] Selected "I am a Fan of":', opt.textContent);
-            break;
-          }
-        }
-        continue;
-      }
-
-      // Gender dropdown
-      if (labelText.includes('gender') || selName.includes('gender') || selId.includes('gender')) {
-        const genderValue = account.gender || 'male';
-        for (const opt of opts) {
-          if (opt.value.toLowerCase().includes(genderValue.toLowerCase()) ||
-              opt.textContent.toLowerCase().includes(genderValue.toLowerCase())) {
-            sel.value = opt.value;
-            sel.dispatchEvent(new Event('change', { bubbles: true }));
-            filled++;
-            console.log('[FIFA] Selected gender:', opt.textContent);
-            break;
-          }
-        }
-        continue;
-      }
-
-      // Language dropdown
-      if (labelText.includes('language') || labelText.includes('communication') || selName.includes('language') || selId.includes('language') || selName === 'preferredlanguage' || selId === 'preferredlanguage') {
-        const langValue = account.language || 'english';
-        console.log('[FIFA] Found language dropdown, looking for:', langValue, 'Options:', opts.map(o => o.textContent));
-        for (const opt of opts) {
-          if (opt.value.toLowerCase() === langValue.toLowerCase() ||
-              opt.textContent.toLowerCase() === langValue.toLowerCase() ||
-              opt.value.toLowerCase().includes(langValue.toLowerCase()) ||
-              opt.textContent.toLowerCase().includes(langValue.toLowerCase())) {
-            sel.value = opt.value;
-            sel.dispatchEvent(new Event('change', { bubbles: true }));
-            sel.dispatchEvent(new Event('input', { bubbles: true }));
-            filled++;
-            console.log('[FIFA] Selected language:', opt.textContent);
             break;
           }
         }
@@ -552,9 +345,8 @@
       return;
     }
 
-    // Wait 2 seconds for page to fully render before auto-filling
-    console.log('[FIFA] Waiting 2 seconds before auto-fill...');
-    await new Promise(r => setTimeout(r, 2000));
+    // Wait a bit for page to fully render
+    await new Promise(r => setTimeout(r, 500));
 
     // Check if there are fillable fields on this page
     const inputs = document.querySelectorAll('input:not([type="hidden"]):not([type="submit"]):not([type="button"])');
@@ -565,15 +357,45 @@
       return;
     }
 
-    // Run autofill ONCE only
+    // Run autofill
     const filled = await runAutofill(currentAccount);
 
     if (filled > 0) {
       console.log('[FIFA] Auto-filled', filled, 'fields');
       showNotification(`Auto-filled ${filled} fields!`);
     }
-    // NO auto-retry, NO mutation observer, NO URL listener
-    // User can press Alt+A to fill again if needed
+  }
+
+  // Watch for dynamic content changes (SPA navigation)
+  function setupMutationObserver() {
+    let debounceTimer = null;
+    const observer = new MutationObserver((mutations) => {
+      // Check if new form elements were added
+      let hasNewForms = false;
+      for (const mutation of mutations) {
+        if (mutation.addedNodes.length > 0) {
+          for (const node of mutation.addedNodes) {
+            if (node.nodeType === 1) {
+              if (node.tagName === 'INPUT' || node.tagName === 'SELECT' ||
+                  node.querySelector?.('input, select')) {
+                hasNewForms = true;
+                break;
+              }
+            }
+          }
+        }
+        if (hasNewForms) break;
+      }
+
+      if (hasNewForms) {
+        // Reset flag and debounce
+        autoFillAttempted = false;
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(autoFillPage, 800);
+      }
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
   }
 
   // ========== TICKET SELECTOR FUNCTIONS ==========
@@ -804,9 +626,9 @@
     });
   }
 
-  // Start auto-fill on page load (ONCE only)
-  // Press Alt+A to trigger autofill again manually
+  // Start auto-fill on page load
   console.log('[FIFA] All-in-One extension loaded');
   autoFillPage();
+  setupMutationObserver();
 
 })();

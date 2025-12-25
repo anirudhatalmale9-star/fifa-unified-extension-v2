@@ -29,14 +29,15 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize - ALWAYS load from accounts.csv file first
   async function init() {
     // Always read fresh from accounts.csv file
-    const accounts = await loadEmbeddedCSV();
+    const embeddedAccounts = await loadEmbeddedCSV();
 
-    if (accounts.length > 0) {
+    if (embeddedAccounts.length > 0) {
+      // Get previously selected row (or default to 0)
       storage.get(['selectedRow'], (result) => {
-        const selectedRow = Math.min(result.selectedRow || 0, accounts.length - 1);
-        storage.set({ accounts, selectedRow }, () => {
-          populateAccountSelect(accounts, selectedRow);
-          console.log('[FIFA] Loaded', accounts.length, 'accounts from accounts.csv');
+        const selectedRow = Math.min(result.selectedRow || 0, embeddedAccounts.length - 1);
+        storage.set({ accounts: embeddedAccounts, selectedRow }, () => {
+          populateAccountSelect(embeddedAccounts, selectedRow);
+          console.log('[FIFA] Loaded', embeddedAccounts.length, 'accounts from accounts.csv');
         });
       });
     } else {

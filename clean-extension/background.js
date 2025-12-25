@@ -251,7 +251,7 @@ async function loadAccountsFromCSV() {
 // Inject autofill into all frames of a tab
 async function injectAutofillIntoAllFrames(tabId) {
   try {
-    // Load fresh from accounts.csv file
+    // ALWAYS load fresh from accounts.csv file
     let accounts = await loadAccountsFromCSV();
 
     // Fallback to storage if CSV is empty
@@ -270,7 +270,7 @@ async function injectAutofillIntoAllFrames(tabId) {
       return;
     }
 
-    // Update storage with accounts
+    // Update storage with fresh accounts
     await chrome.storage.local.set({ accounts, selectedRow });
 
     // Inject into all frames

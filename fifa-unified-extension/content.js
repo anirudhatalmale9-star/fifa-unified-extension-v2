@@ -22,6 +22,10 @@
   ];
   const ACTION_DELAY = 50;
 
+  // Default zoom level (can be overridden in CSV with "zoom" column)
+  // Set to 100 for no zoom, 50 for 50%, 33 for 33%, etc.
+  const DEFAULT_ZOOM = 100;
+
   // US State abbreviations to full names
   const US_STATES = {
     'AL': 'Alabama', 'AK': 'Alaska', 'AZ': 'Arizona', 'AR': 'Arkansas', 'CA': 'California',
@@ -876,9 +880,27 @@
     });
   }
 
+  // Apply zoom level to page
+  async function applyZoom() {
+    const account = await loadAccount();
+    let zoomLevel = DEFAULT_ZOOM;
+
+    if (account && account.zoom) {
+      zoomLevel = parseInt(account.zoom) || DEFAULT_ZOOM;
+    }
+
+    if (zoomLevel !== 100 && zoomLevel > 0 && zoomLevel <= 200) {
+      document.body.style.zoom = (zoomLevel / 100);
+      console.log('[FIFA] Applied zoom level:', zoomLevel + '%');
+    }
+  }
+
   // Start auto-fill on page load (ONCE only)
   // Press Alt+A to trigger autofill again manually
   console.log('[FIFA] All-in-One extension loaded');
+
+  // Apply zoom first, then autofill
+  applyZoom();
   autoFillPage();
 
 })();

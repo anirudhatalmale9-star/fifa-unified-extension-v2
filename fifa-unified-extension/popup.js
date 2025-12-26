@@ -78,7 +78,8 @@ document.addEventListener('DOMContentLoaded', () => {
       'gender': 'gender', 'language': 'language',
       'matches': 'matches', 'match': 'matches',
       'category': 'category', 'cat': 'category',
-      'quantity': 'quantity', 'qty': 'quantity', 'tickets': 'quantity'
+      'quantity': 'quantity', 'qty': 'quantity', 'tickets': 'quantity',
+      'zoom': 'zoom', 'zoom_level': 'zoom', 'zoomlevel': 'zoom'
     };
 
     let normalizedHeaders = headers.map(h => headerMap[h] || h);

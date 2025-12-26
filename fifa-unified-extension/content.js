@@ -769,7 +769,79 @@
       }
     }
 
-    showNotification(`Done! ${successCount} matches selected, ${failCount} failed.`);
+    showNotification(`Done! ${successCount} matches selected, ${failCount} failed. Clicking Continue...`);
+
+    // Auto-click Continue button after ticket selection
+    await delay(1000);
+    await clickContinueButton();
+  }
+
+  // Click Continue/Proceed button to go to checkout
+  async function clickContinueButton() {
+    // Look for Continue, Proceed, Next, Buy, Checkout buttons
+    const buttonSelectors = [
+      'button[type="submit"]',
+      'button.continue',
+      'button.proceed',
+      'button.next',
+      'button.checkout',
+      'button.buy',
+      'a.continue',
+      'a.proceed',
+      'a.checkout',
+      '[class*="continue"]',
+      '[class*="proceed"]',
+      '[class*="checkout"]',
+      '[class*="submit"]'
+    ];
+
+    for (const selector of buttonSelectors) {
+      const buttons = document.querySelectorAll(selector);
+      for (const btn of buttons) {
+        const text = (btn.textContent || '').toLowerCase().trim();
+        const ariaLabel = (btn.getAttribute('aria-label') || '').toLowerCase();
+
+        // Check if button text indicates continue/proceed
+        if (text.includes('continue') || text.includes('proceed') ||
+            text.includes('next') || text.includes('checkout') ||
+            text.includes('buy') || text.includes('purchase') ||
+            ariaLabel.includes('continue') || ariaLabel.includes('proceed')) {
+
+          // Make sure button is visible
+          const rect = btn.getBoundingClientRect();
+          if (rect.width > 0 && rect.height > 0) {
+            console.log('[FIFA] Clicking Continue button:', text || ariaLabel);
+            btn.scrollIntoView({ behavior: 'instant', block: 'center' });
+            await delay(300);
+            btn.click();
+            showNotification('Clicked Continue! Moving to checkout...');
+            return true;
+          }
+        }
+      }
+    }
+
+    // Also try finding button by text content directly
+    const allButtons = document.querySelectorAll('button, a[role="button"], input[type="submit"]');
+    for (const btn of allButtons) {
+      const text = (btn.textContent || btn.value || '').toLowerCase().trim();
+      if (text === 'continue' || text === 'proceed' || text === 'next step' ||
+          text === 'checkout' || text === 'buy now' || text === 'purchase') {
+        const rect = btn.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          console.log('[FIFA] Found Continue button by text:', text);
+          btn.scrollIntoView({ behavior: 'instant', block: 'center' });
+          await delay(300);
+          btn.click();
+          showNotification('Clicked Continue! Moving to checkout...');
+          return true;
+        }
+      }
+    }
+
+    console.log('[FIFA] Continue button not found');
+    showNotification('Tickets selected! Please click Continue manually.', false);
+    return false;
   }
 
   // ========== INITIALIZATION ==========

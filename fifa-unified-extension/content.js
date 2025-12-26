@@ -851,7 +851,7 @@
   // ========== INITIALIZATION ==========
 
   // Keyboard shortcuts
-  document.addEventListener('keydown', (e) => {
+  document.addEventListener('keydown', async (e) => {
     // Ctrl+Shift+S for ticket selection
     if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 's') {
       e.preventDefault();
@@ -862,6 +862,15 @@
       e.preventDefault();
       autoFillAttempted = false;
       autoFillPage();
+    }
+    // Alt+P for profile selector popup
+    if (e.altKey && e.key.toLowerCase() === 'p') {
+      e.preventDefault();
+      const selectedProfile = await showProfileSelector();
+      if (selectedProfile !== null) {
+        autoFillAttempted = false;
+        autoFillPage();
+      }
     }
   });
 
@@ -895,12 +904,180 @@
     }
   }
 
+  // ========== PROFILE SELECTOR POPUP ==========
+  function showProfileSelector() {
+    return new Promise((resolve) => {
+      // Get total accounts count
+      chrome.storage.local.get(['accounts', 'selectedRow'], (result) => {
+        const accounts = result.accounts || [];
+        const currentRow = result.selectedRow || 0;
+
+        if (accounts.length === 0) {
+          resolve(null);
+          return;
+        }
+
+        // Create popup overlay
+        const overlay = document.createElement('div');
+        overlay.id = 'fifa-profile-selector';
+        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:999999;display:flex;align-items:center;justify-content:center;font-family:sans-serif;';
+
+        const dialog = document.createElement('div');
+        dialog.style.cssText = 'background:white;padding:24px;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.4);min-width:300px;';
+
+        const title = document.createElement('h3');
+        title.textContent = 'Select Profile';
+        title.style.cssText = 'margin:0 0 16px 0;color:#1a472a;';
+
+        const info = document.createElement('p');
+        info.textContent = `Total accounts: ${accounts.length} | Current: ${currentRow + 1}`;
+        info.style.cssText = 'margin:0 0 16px 0;color:#666;font-size:14px;';
+
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.min = 1;
+        input.max = accounts.length;
+        input.value = currentRow + 1;
+        input.placeholder = 'Enter profile number (1-' + accounts.length + ')';
+        input.style.cssText = 'width:100%;padding:12px;border:2px solid #1a472a;border-radius:6px;font-size:16px;box-sizing:border-box;margin-bottom:16px;';
+
+        const currentEmail = document.createElement('p');
+        currentEmail.textContent = `Current: ${accounts[currentRow]?.email || 'N/A'}`;
+        currentEmail.style.cssText = 'margin:0 0 16px 0;color:#333;font-size:12px;word-break:break-all;';
+
+        // Update email preview when input changes
+        input.addEventListener('input', () => {
+          const idx = parseInt(input.value) - 1;
+          if (idx >= 0 && idx < accounts.length) {
+            currentEmail.textContent = `Selected: ${accounts[idx]?.email || 'N/A'}`;
+          }
+        });
+
+        const btnContainer = document.createElement('div');
+        btnContainer.style.cssText = 'display:flex;gap:12px;';
+
+        const selectBtn = document.createElement('button');
+        selectBtn.textContent = 'Select & Fill';
+        selectBtn.style.cssText = 'flex:1;padding:12px;background:#1a472a;color:white;border:none;border-radius:6px;cursor:pointer;font-size:14px;font-weight:bold;';
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.textContent = 'Skip';
+        cancelBtn.style.cssText = 'padding:12px 20px;background:#666;color:white;border:none;border-radius:6px;cursor:pointer;font-size:14px;';
+
+        selectBtn.onclick = () => {
+          const profileNum = parseInt(input.value);
+          if (profileNum >= 1 && profileNum <= accounts.length) {
+            chrome.storage.local.set({ selectedRow: profileNum - 1 }, () => {
+              overlay.remove();
+              resolve(profileNum - 1);
+            });
+          } else {
+            input.style.borderColor = 'red';
+          }
+        };
+
+        cancelBtn.onclick = () => {
+          overlay.remove();
+          resolve(null);
+        };
+
+        // Enter key to submit
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') selectBtn.click();
+          if (e.key === 'Escape') cancelBtn.click();
+        });
+
+        btnContainer.appendChild(selectBtn);
+        btnContainer.appendChild(cancelBtn);
+        dialog.appendChild(title);
+        dialog.appendChild(info);
+        dialog.appendChild(input);
+        dialog.appendChild(currentEmail);
+        dialog.appendChild(btnContainer);
+        overlay.appendChild(dialog);
+        document.body.appendChild(overlay);
+
+        input.focus();
+        input.select();
+      });
+    });
+  }
+
+  // ========== AUTO-CLICK HELPERS ==========
+  // Auto-click "Accept ticket downgrade" checkbox and "Add a new card" button
+  async function autoClickCheckoutElements() {
+    await delay(500);
+
+    // 1. Find and click "Accept ticket downgrade" checkbox
+    const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+    for (const cb of checkboxes) {
+      const label = cb.closest('label') || cb.parentElement;
+      const labelText = (label?.textContent || '').toLowerCase();
+      const cbId = (cb.id || '').toLowerCase();
+      const cbName = (cb.name || '').toLowerCase();
+
+      if (labelText.includes('downgrade') || labelText.includes('accept') ||
+          cbId.includes('downgrade') || cbName.includes('downgrade') ||
+          labelText.includes('ticket') && labelText.includes('accept')) {
+        if (!cb.checked) {
+          cb.click();
+          console.log('[FIFA] Clicked Accept ticket downgrade checkbox');
+          showNotification('Accepted ticket downgrade');
+        }
+        break;
+      }
+    }
+
+    await delay(500);
+
+    // 2. Find and click "Add a new card" button/link
+    const allClickable = document.querySelectorAll('button, a, span, div[role="button"]');
+    for (const el of allClickable) {
+      const text = (el.textContent || '').toLowerCase().trim();
+      const ariaLabel = (el.getAttribute('aria-label') || '').toLowerCase();
+
+      if (text.includes('add a new card') || text.includes('add new card') ||
+          text.includes('add card') || text === '+ add a new card' ||
+          ariaLabel.includes('add') && ariaLabel.includes('card')) {
+        const rect = el.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          el.click();
+          console.log('[FIFA] Clicked Add a new card');
+          showNotification('Clicked Add a new card');
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  // Check if we're on checkout/payment page and auto-click elements
+  function checkAndAutoClickCheckout() {
+    const url = window.location.href.toLowerCase();
+    const pageText = document.body?.textContent?.toLowerCase() || '';
+
+    // Check if on payment/checkout page
+    if (url.includes('checkout') || url.includes('payment') || url.includes('cart') ||
+        pageText.includes('add a new card') || pageText.includes('payment method') ||
+        pageText.includes('accept ticket')) {
+      console.log('[FIFA] Detected checkout/payment page, auto-clicking elements...');
+      autoClickCheckoutElements();
+    }
+  }
+
+  // ========== INITIALIZATION ==========
   // Start auto-fill on page load (ONCE only)
   // Press Alt+A to trigger autofill again manually
   console.log('[FIFA] All-in-One extension loaded');
 
-  // Apply zoom first, then autofill
+  // Apply zoom first
   applyZoom();
+
+  // Check if on checkout page
+  setTimeout(checkAndAutoClickCheckout, 2000);
+
+  // Auto-fill
   autoFillPage();
 
 })();

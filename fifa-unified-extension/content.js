@@ -863,8 +863,8 @@
       autoFillAttempted = false;
       autoFillPage();
     }
-    // Alt+P for profile selector popup
-    if (e.altKey && e.key.toLowerCase() === 'p') {
+    // F2 for profile selector popup
+    if (e.key === 'F2') {
       e.preventDefault();
       const selectedProfile = await showProfileSelector();
       if (selectedProfile !== null) {
@@ -1006,50 +1006,76 @@
   // ========== AUTO-CLICK HELPERS ==========
   // Auto-click "Accept ticket downgrade" checkbox and "Add a new card" button
   async function autoClickCheckoutElements() {
-    await delay(500);
+    await delay(1000);
+    let clickedDowngrade = false;
+    let clickedAddCard = false;
 
-    // 1. Find and click "Accept ticket downgrade" checkbox
-    const checkboxes = document.querySelectorAll('input[type="checkbox"]');
-    for (const cb of checkboxes) {
-      const label = cb.closest('label') || cb.parentElement;
-      const labelText = (label?.textContent || '').toLowerCase();
-      const cbId = (cb.id || '').toLowerCase();
-      const cbName = (cb.name || '').toLowerCase();
-
-      if (labelText.includes('downgrade') || labelText.includes('accept') ||
-          cbId.includes('downgrade') || cbName.includes('downgrade') ||
-          labelText.includes('ticket') && labelText.includes('accept')) {
-        if (!cb.checked) {
-          cb.click();
-          console.log('[FIFA] Clicked Accept ticket downgrade checkbox');
+    // 1. Find and click "Accept ticket(s) downgrade" checkbox
+    // Look for checkbox near text containing "downgrade"
+    const allLabels = document.querySelectorAll('label, span, div, p');
+    for (const label of allLabels) {
+      const text = (label.textContent || '').toLowerCase();
+      if (text.includes('accept') && text.includes('downgrade')) {
+        // Found the label, now find nearby checkbox
+        const checkbox = label.querySelector('input[type="checkbox"]') ||
+                         label.previousElementSibling?.querySelector('input[type="checkbox"]') ||
+                         label.parentElement?.querySelector('input[type="checkbox"]');
+        if (checkbox && !checkbox.checked) {
+          checkbox.click();
+          console.log('[FIFA] Clicked Accept ticket(s) downgrade checkbox');
           showNotification('Accepted ticket downgrade');
+          clickedDowngrade = true;
+          break;
         }
-        break;
+      }
+    }
+
+    // Also try direct checkbox search
+    if (!clickedDowngrade) {
+      const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+      for (const cb of checkboxes) {
+        // Check parent/sibling text
+        const parent = cb.closest('div') || cb.parentElement;
+        const parentText = (parent?.textContent || '').toLowerCase();
+        if (parentText.includes('downgrade') || parentText.includes('accept ticket')) {
+          if (!cb.checked) {
+            cb.click();
+            console.log('[FIFA] Clicked downgrade checkbox (parent search)');
+            showNotification('Accepted ticket downgrade');
+            clickedDowngrade = true;
+            break;
+          }
+        }
       }
     }
 
     await delay(500);
 
-    // 2. Find and click "Add a new card" button/link
-    const allClickable = document.querySelectorAll('button, a, span, div[role="button"]');
-    for (const el of allClickable) {
-      const text = (el.textContent || '').toLowerCase().trim();
-      const ariaLabel = (el.getAttribute('aria-label') || '').toLowerCase();
+    // 2. Find and click "+ Add a new card" link/button
+    const allElements = document.querySelectorAll('a, button, span, div, p');
+    for (const el of allElements) {
+      const text = (el.textContent || '').trim();
+      const textLower = text.toLowerCase();
 
-      if (text.includes('add a new card') || text.includes('add new card') ||
-          text.includes('add card') || text === '+ add a new card' ||
-          ariaLabel.includes('add') && ariaLabel.includes('card')) {
+      // Match "+ Add a new card" or similar
+      if (textLower === 'add a new card' || textLower === '+ add a new card' ||
+          text === '+ Add a new card' || textLower.includes('add a new card') ||
+          textLower === 'add new card' || textLower === '+ add new card') {
         const rect = el.getBoundingClientRect();
         if (rect.width > 0 && rect.height > 0) {
+          console.log('[FIFA] Found Add a new card element:', text);
+          el.scrollIntoView({ behavior: 'instant', block: 'center' });
+          await delay(300);
           el.click();
           console.log('[FIFA] Clicked Add a new card');
           showNotification('Clicked Add a new card');
-          return true;
+          clickedAddCard = true;
+          break;
         }
       }
     }
 
-    return false;
+    return clickedDowngrade || clickedAddCard;
   }
 
   // Check if we're on checkout/payment page and auto-click elements
